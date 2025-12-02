@@ -170,7 +170,7 @@ export default function GeografiaPage() {
       </header>
 
       {/* Main Content */}
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <main className="w-full px-4 py-8 sm:px-6 lg:px-8">
         {/* Resumen General */}
         <div className="mb-8 grid gap-4 md:grid-cols-4">
           <Card className="p-6">
@@ -388,6 +388,7 @@ export default function GeografiaPage() {
       </main>
 
       {selectedProvince && (
+        
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
           <Card className="w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
             <div className="border-b border-border px-6 py-4 flex items-center justify-between">
