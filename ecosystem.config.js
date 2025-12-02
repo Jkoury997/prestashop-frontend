@@ -1,9 +1,9 @@
 module.exports = {
   apps: [
     {
-      name: "next-app",
+      name: "ecommerce-metrics",
       script: "node_modules/next/dist/bin/next",
-      args: "start -p 3000",
+      args: "start -p 12000",
       cwd: "./",
       env: {
         NODE_ENV: "production",
