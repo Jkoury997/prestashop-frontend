@@ -201,7 +201,7 @@ export default function GeografiaPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Pérdida Total</p>
-                <p className="mt-2 text-2xl font-bold text-foreground">${(totalPerdidaGeneral / 1000).toFixed(1)}k</p>
+                <p className="mt-2 text-2xl font-bold text-foreground">${totalPerdidaGeneral.toLocaleString("es-AR")} </p>
                 <p className="mt-1 text-xs text-muted-foreground">Últimos 4 meses</p>
               </div>
               <div className="rounded-full bg-chart-3/10 p-3">
@@ -216,7 +216,7 @@ export default function GeografiaPage() {
                 <p className="text-sm font-medium text-muted-foreground">Provincia Crítica</p>
                 <p className="mt-2 text-xl font-bold text-destructive">{peorProvincia?.provincia || "N/A"}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  ${peorProvincia ? (peorProvincia.totalPerdido / 1000).toFixed(1) : 0}k perdidos
+                  ${peorProvincia ? peorProvincia.totalPerdido.toLocaleString("es-AR") : 0} perdidos
                 </p>
               </div>
               <div className="rounded-full bg-destructive/10 p-3">
@@ -248,7 +248,7 @@ export default function GeografiaPage() {
                     <div className="text-xs opacity-90">
                       {prov.totalClientes} cliente{prov.totalClientes !== 1 ? "s" : ""}
                     </div>
-                    <div className="mt-2 text-lg font-bold">${(prov.totalPerdido / 1000).toFixed(1)}k</div>
+                    <div className="mt-2 text-lg font-bold">${prov.totalPerdido.toLocaleString("es-AR")}</div>
                   </div>
                 </Card>
               ))}

@@ -111,14 +111,27 @@ export default function Page() {
   const avgTicket =
     totalPedidos4Meses > 0 ? totalLostRevenue / totalPedidos4Meses : 0
 
-  const handleContactWhatsApp = (telefono, nombre) => {
-    if (!telefono) return
-    const cleanPhone = telefono.replace(/\D/g, "")
-    const message = encodeURIComponent(
-      `Hola ${nombre}, notamos que no has comprado en el último mes. ¿Podemos ayudarte en algo? 😊`,
-    )
-    window.open(`https://wa.me/54${cleanPhone}?text=${message}`, "_blank")
+const handleContactWhatsApp = (telefono, nombre) => {
+  if (!telefono) return;
+
+  // 1) Convertir "+" solo si está al inicio → "00"
+  let cleanPhone = telefono.replace(/^\+/, "00");
+
+  // 2) Quitar todo lo que no sea número
+  cleanPhone = cleanPhone.replace(/\D/g, "");
+
+  // 3) Si ya empieza con "54" o "0054", no agregar nada
+  if (!cleanPhone.startsWith("54") && !cleanPhone.startsWith("0054")) {
+    cleanPhone = "54" + cleanPhone;
   }
+
+  const message = encodeURIComponent(
+    `Hola ${nombre}, notamos que no has comprado en el último mes. ¿Podemos ayudarte en algo? 😊`
+  );
+
+  window.open(`https://wa.me/${cleanPhone}?text=${message}`, "_blank");
+};
+
 
   const handleContactEmail = (email, nombre) => {
     if (!email) return

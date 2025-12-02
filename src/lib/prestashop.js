@@ -4,13 +4,17 @@ import axios from "axios";
 const PRESTASHOP_URL = process.env.PRESTASHOP_URL;
 const WS_KEY = process.env.PRESTASHOP_WS_KEY;
 
+if (!PRESTASHOP_URL || !WS_KEY) {
+  console.warn("⚠️ Falta PRESTA_BASE_URL o PRESTA_API_KEY en .env.local");
+}
+
 // ------------------ Helpers de fecha ------------------
-function formatDate(date) {
+export async function formatDate(date) {
   return date.toISOString().slice(0, 10); // YYYY-MM-DD
 }
 
 // ------------------ Órdenes en rango ------------------
-async function getOrdersInRange(from, to, limitPerPage = 300) {
+export async function getOrdersInRange(from, to, limitPerPage = 300) {
   console.log(`Cargando órdenes desde ${from} hasta ${to}...`);
   const orders = [];
   let offset = 0;
@@ -296,3 +300,34 @@ export async function getClientesObjetivo() {
 
   return jsonData;
 }
+
+/**
+ * Llamado genérico al Webservice de PrestaShop
+ * @param {string} resource - Ej: "products", "orders", "order_details", "categories"
+ * @param {object} params - Filtros extra para la query
+ */
+export async function prestaFetch(resource, params = {}) {
+  const url = new URL(`${PRESTASHOP_URL}/${resource}`);
+
+  url.searchParams.set("output_format", "JSON");
+  url.searchParams.set("ws_key", WS_KEY);
+
+  Object.entries(params).forEach(([key, value]) => {
+    url.searchParams.set(key, value);
+  });
+
+  console.log("🔍 Presta URL:", url.toString()); // 👈 AGREGADO
+
+  const res = await fetch(url.toString(), {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Error Presta ${resource}: ${res.status} - ${text}`);
+  }
+
+  return res.json();
+}
+
