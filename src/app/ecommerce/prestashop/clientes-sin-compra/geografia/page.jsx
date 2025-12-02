@@ -3,12 +3,13 @@
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MapPin, TrendingDown, DollarSign, Users, ArrowLeft } from "lucide-react"
+import { MapPin, TrendingDown, DollarSign, Users, ArrowLeft, Mail, MessageCircle, X } from "lucide-react"
 import { useEffect, useState } from "react"
 import Link from "next/link"
 
 export default function GeografiaPage() {
   const [provinceData, setProvinceData] = useState([])
+  const [selectedProvince, setSelectedProvince] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -24,8 +25,16 @@ export default function GeografiaPage() {
 
         const apiClientes = data.clientes || []
 
-        // Mapear a la estructura que necesitamos acá
+        console.log("Clientes Inactivos desde API:", apiClientes)
+
+               // 🔥 Mapear a la estructura COMPLETA que necesitamos acá
         const inactive = apiClientes.map((c) => ({
+          id: c.id,
+          nombre: c.firstname,
+          apellido: c.lastname,
+          email: c.email,
+          telefono: c.phone || "",
+          tipoCliente: c.customer_type,
           provincia: c.province || "Sin Provincia",
           total4Meses: c.total_amount_last_4_months || 0,
           pedidos4Meses: c.orders_count_last_4_months || 0,
@@ -53,18 +62,18 @@ export default function GeografiaPage() {
           return acc
         }, {})
 
-        // Convertir a array y ordenar por pérdida total
-        const provincesArray = Object.values(groupedByProvince)
-          .map((prov) => ({
-            ...prov,
-            ticketPromedio:
-              prov.totalPedidos > 0 ? prov.totalPerdido / prov.totalPedidos : 0,
-            perdidaPromedioPorCliente:
-              prov.totalClientes > 0 ? prov.totalPerdido / prov.totalClientes : 0,
-          }))
-          .sort((a, b) => b.totalPerdido - a.totalPerdido)
+            // Convertir a array y ordenar por pérdida total
+    const provincesArray = Object.values(groupedByProvince)
+      .map((prov) => ({
+        ...prov,
+        ticketPromedio: prov.totalPedidos > 0 ? prov.totalPerdido / prov.totalPedidos : 0,
+        perdidaPromedioPorCliente: prov.totalClientes > 0 ? prov.totalPerdido / prov.totalClientes : 0,
+      }))
+      .sort((a, b) => b.totalPerdido - a.totalPerdido)
 
-        setProvinceData(provincesArray)
+    setProvinceData(provincesArray)
+  
+        console.log("Datos por Provincia:", provincesArray)
       } catch (err) {
         console.error(err)
         setError(err.message || "Error cargando datos")
@@ -117,6 +126,22 @@ export default function GeografiaPage() {
     )
   }
 
+    const handleEmailClients = (clientes) => {
+    const emails = clientes
+      .map((c) => c.email)
+      .filter(Boolean)
+      .join(",")
+    if (emails) {
+      window.location.href = `mailto:${emails}?subject=¡Te extrañamos! Ofertas especiales para ti`
+    }
+  }
+
+  const handleWhatsAppContact = (telefono, nombre) => {
+    const cleanPhone = telefono.replace(/\D/g, "")
+    const message = `Hola ${nombre}, te extrañamos! Tenemos ofertas especiales para vos.`
+    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, "_blank")
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -124,16 +149,14 @@ export default function GeografiaPage() {
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href="/ecommerce/prestashop/clientes-sin-compra">
+              <Link href="/">
                 <Button variant="ghost" size="sm" className="gap-2">
                   <ArrowLeft className="h-4 w-4" />
                   Volver
                 </Button>
               </Link>
               <div>
-                <h1 className="text-3xl font-bold tracking-tight text-foreground">
-                  Análisis Geográfico
-                </h1>
+                <h1 className="text-3xl font-bold tracking-tight text-foreground">Análisis Geográfico</h1>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Pérdidas automáticas por provincia - Clientes inactivos del último mes
                 </p>
@@ -153,12 +176,8 @@ export default function GeografiaPage() {
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">
-                  Provincias Afectadas
-                </p>
-                <p className="mt-2 text-3xl font-bold text-foreground">
-                  {provinciasAfectadas}
-                </p>
+                <p className="text-sm font-medium text-muted-foreground">Provincias Afectadas</p>
+                <p className="mt-2 text-3xl font-bold text-foreground">{provinciasAfectadas}</p>
               </div>
               <div className="rounded-full bg-primary/10 p-3">
                 <MapPin className="h-6 w-6 text-primary" />
@@ -169,12 +188,8 @@ export default function GeografiaPage() {
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">
-                  Clientes Inactivos
-                </p>
-                <p className="mt-2 text-3xl font-bold text-destructive">
-                  {totalClientesInactivos}
-                </p>
+                <p className="text-sm font-medium text-muted-foreground">Clientes Inactivos</p>
+                <p className="mt-2 text-3xl font-bold text-destructive">{totalClientesInactivos}</p>
               </div>
               <div className="rounded-full bg-destructive/10 p-3">
                 <Users className="h-6 w-6 text-destructive" />
@@ -185,15 +200,9 @@ export default function GeografiaPage() {
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">
-                  Pérdida Total Promedio por Mes
-                </p>
-                <p className="mt-2 text-2xl font-bold text-foreground">
-                  ${totalPerdidaGeneral.toLocaleString("es-AR")}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Últimos 4 meses
-                </p>
+                <p className="text-sm font-medium text-muted-foreground">Pérdida Total</p>
+                <p className="mt-2 text-2xl font-bold text-foreground">${(totalPerdidaGeneral / 1000).toFixed(1)}k</p>
+                <p className="mt-1 text-xs text-muted-foreground">Últimos 4 meses</p>
               </div>
               <div className="rounded-full bg-chart-3/10 p-3">
                 <DollarSign className="h-6 w-6 text-chart-3" />
@@ -204,18 +213,10 @@ export default function GeografiaPage() {
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">
-                  Provincia Crítica
-                </p>
-                <p className="mt-2 text-xl font-bold text-destructive">
-                  {peorProvincia?.provincia || "N/A"}
-                </p>
+                <p className="text-sm font-medium text-muted-foreground">Provincia Crítica</p>
+                <p className="mt-2 text-xl font-bold text-destructive">{peorProvincia?.provincia || "N/A"}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  $
-                  {peorProvincia
-                    ? peorProvincia.totalPerdido.toLocaleString("es-AR")
-                    : 0}{" "}
-                  perdidos
+                  ${peorProvincia ? (peorProvincia.totalPerdido / 1000).toFixed(1) : 0}k perdidos
                 </p>
               </div>
               <div className="rounded-full bg-destructive/10 p-3">
@@ -228,11 +229,9 @@ export default function GeografiaPage() {
         {/* Mapa de Calor */}
         <Card className="mb-8">
           <div className="border-b border-border px-6 py-4">
-            <h2 className="text-lg font-semibold text-foreground">
-              Mapa de Intensidad de Pérdidas
-            </h2>
+            <h2 className="text-lg font-semibold text-foreground">Mapa de Intensidad de Pérdidas</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Visualización de pérdidas por provincia - Rojo indica mayor pérdida
+              Haz clic en una provincia para ver el detalle de clientes - Rojo indica mayor pérdida
             </p>
           </div>
           <div className="p-6">
@@ -240,20 +239,16 @@ export default function GeografiaPage() {
               {provinceData.map((prov) => (
                 <Card
                   key={prov.provincia}
-                  className={`border-2 p-4 transition-all hover:scale-105 cursor-pointer ${getIntensityColor(
-                    prov.totalPerdido,
-                  )}`}
+                  onClick={() => setSelectedProvince(prov)}
+                  className={`border-2 p-4 transition-all hover:scale-105 cursor-pointer ${getIntensityColor(prov.totalPerdido)}`}
                 >
                   <div className="flex flex-col items-center text-center">
                     <MapPin className="h-8 w-8 mb-2" />
                     <h3 className="font-bold text-sm mb-1">{prov.provincia}</h3>
                     <div className="text-xs opacity-90">
-                      {prov.totalClientes} cliente
-                      {prov.totalClientes !== 1 ? "s" : ""}
+                      {prov.totalClientes} cliente{prov.totalClientes !== 1 ? "s" : ""}
                     </div>
-                    <div className="mt-2 text-lg font-bold">
-                      ${prov.totalPerdido.toLocaleString("es-AR")}
-                    </div>
+                    <div className="mt-2 text-lg font-bold">${(prov.totalPerdido / 1000).toFixed(1)}k</div>
                   </div>
                 </Card>
               ))}
@@ -261,14 +256,12 @@ export default function GeografiaPage() {
           </div>
         </Card>
 
-        {/* Tabla Detallada */}
+  {/* Tabla Detallada */}
         <Card>
           <div className="border-b border-border px-6 py-4">
-            <h2 className="text-lg font-semibold text-foreground">
-              Detalle por Provincia
-            </h2>
+            <h2 className="text-lg font-semibold text-foreground">Detalle por Provincia</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Ranking de provincias por pérdida potencial
+              Ranking de provincias por pérdida potencial - Haz clic en una fila para ver clientes
             </p>
           </div>
 
@@ -306,18 +299,13 @@ export default function GeografiaPage() {
                 {provinceData.map((prov, index) => (
                   <tr
                     key={prov.provincia}
-                    className="hover:bg-muted/50 transition-colors"
+                    onClick={() => setSelectedProvince(prov)}
+                    className="hover:bg-muted/50 transition-colors cursor-pointer"
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-center">
                         <Badge
-                          variant={
-                            index === 0
-                              ? "destructive"
-                              : index < 3
-                              ? "secondary"
-                              : "outline"
-                          }
+                          variant={index === 0 ? "destructive" : index < 3 ? "secondary" : "outline"}
                           className="w-8 h-8 rounded-full flex items-center justify-center"
                         >
                           {index + 1}
@@ -328,65 +316,38 @@ export default function GeografiaPage() {
                       <div className="flex items-center gap-3">
                         <MapPin className="h-5 w-5 text-primary" />
                         <div>
-                          <div className="font-medium text-foreground">
-                            {prov.provincia}
-                          </div>
+                          <div className="font-medium text-foreground">{prov.provincia}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="text-sm font-semibold text-foreground">
-                        {prov.totalClientes}
-                      </div>
+                      <div className="text-sm font-semibold text-foreground">{prov.totalClientes}</div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="text-sm text-muted-foreground">
-                        {prov.totalPedidos}
-                      </div>
+                      <div className="text-sm text-muted-foreground">{prov.totalPedidos}</div>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="font-bold text-destructive text-lg">
-                        $
-                        {prov.totalPerdido.toLocaleString("es-AR", {
-                          minimumFractionDigits: 0,
-                        })}
+                        ${prov.totalPerdido.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="text-sm text-foreground">
-                        $
-                        {prov.perdidaPromedioPorCliente.toLocaleString("es-AR", {
-                          minimumFractionDigits: 2,
-                        })}
+                        ${prov.perdidaPromedioPorCliente.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="text-sm text-muted-foreground">
-                        $
-                        {prov.ticketPromedio.toLocaleString("es-AR", {
-                          minimumFractionDigits: 2,
-                        })}
+                        ${prov.ticketPromedio.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <Badge
                         variant={
-                          index === 0
-                            ? "destructive"
-                            : index < 3
-                            ? "default"
-                            : index < 5
-                            ? "secondary"
-                            : "outline"
+                          index === 0 ? "destructive" : index < 3 ? "default" : index < 5 ? "secondary" : "outline"
                         }
                       >
-                        {index === 0
-                          ? "Crítico"
-                          : index < 3
-                          ? "Alto"
-                          : index < 5
-                          ? "Medio"
-                          : "Bajo"}
+                        {index === 0 ? "Crítico" : index < 3 ? "Alto" : index < 5 ? "Medio" : "Bajo"}
                       </Badge>
                     </td>
                   </tr>
@@ -399,44 +360,157 @@ export default function GeografiaPage() {
         {/* Leyenda del Mapa de Calor */}
         <Card className="mt-6">
           <div className="px-6 py-4">
-            <h3 className="text-sm font-semibold text-foreground mb-3">
-              Leyenda de Intensidad
-            </h3>
+            <h3 className="text-sm font-semibold text-foreground mb-3">Leyenda de Intensidad</h3>
             <div className="flex flex-wrap gap-4">
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 rounded bg-red-500/20 border-2 border-red-500/40"></div>
-                <span className="text-xs text-muted-foreground">
-                  Crítico (80-100%)
-                </span>
+                <span className="text-xs text-muted-foreground">Crítico (80-100%)</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 rounded bg-orange-500/20 border-2 border-orange-500/40"></div>
-                <span className="text-xs text-muted-foreground">
-                  Alto (60-80%)
-                </span>
+                <span className="text-xs text-muted-foreground">Alto (60-80%)</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 rounded bg-yellow-500/20 border-2 border-yellow-500/40"></div>
-                <span className="text-xs text-muted-foreground">
-                  Medio (40-60%)
-                </span>
+                <span className="text-xs text-muted-foreground">Medio (40-60%)</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 rounded bg-blue-500/20 border-2 border-blue-500/40"></div>
-                <span className="text-xs text-muted-foreground">
-                  Bajo (20-40%)
-                </span>
+                <span className="text-xs text-muted-foreground">Bajo (20-40%)</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 rounded bg-slate-500/20 border-2 border-slate-500/40"></div>
-                <span className="text-xs text-muted-foreground">
-                  Mínimo (0-20%)
-                </span>
+                <span className="text-xs text-muted-foreground">Mínimo (0-20%)</span>
               </div>
             </div>
           </div>
         </Card>
       </main>
+
+      {selectedProvince && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <Card className="w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="border-b border-border px-6 py-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                  <MapPin className="h-6 w-6 text-primary" />
+                  {selectedProvince.provincia}
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {selectedProvince.totalClientes} clientes inactivos - $
+                  {selectedProvince.totalPerdido.toLocaleString("es-AR", { minimumFractionDigits: 2 })} en riesgo
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleEmailClients(selectedProvince.clientes)}
+                  className="gap-2"
+                >
+                  <Mail className="h-4 w-4" />
+                  Contactar Todos
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => setSelectedProvince(null)}>
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="overflow-auto flex-1">
+              <table className="w-full">
+                <thead className="border-b border-border bg-muted/50 sticky top-0">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      ID
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Cliente
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Email
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Teléfono
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Tipo
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Pedidos (4M)
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Total (4M)
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Acciones
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border bg-card">
+                  {selectedProvince.clientes.map((cliente) => (
+                    <tr key={cliente.id} className="hover:bg-muted/50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-mono text-muted-foreground">#{cliente.id}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="font-medium text-foreground">
+                          {cliente.nombre} {cliente.apellido}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-muted-foreground">{cliente.email}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-muted-foreground">{cliente.telefono}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Badge variant="outline">{cliente.tipoCliente}</Badge>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="text-sm text-foreground">{cliente.pedidos4Meses || 0}</div>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="font-semibold text-foreground">
+                          ${(cliente.total4Meses || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              window.location.href = `mailto:${cliente.email}`
+                            }}
+                            title="Enviar Email"
+                          >
+                            <Mail className="h-4 w-4" />
+                          </Button>
+                          {cliente.telefono && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleWhatsAppContact(cliente.telefono, cliente.nombre)
+                              }}
+                              title="Enviar WhatsApp"
+                            >
+                              <MessageCircle className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }

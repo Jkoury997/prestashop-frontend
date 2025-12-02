@@ -14,6 +14,7 @@ import {
   Phone,
 } from "lucide-react"
 import { useEffect, useState } from "react"
+import Link from "next/link"
 
 export default function Page() {
   const [customers, setCustomers] = useState([])
@@ -183,7 +184,10 @@ export default function Page() {
                 )}
               </div>
             </div>
-            <div className="flex gap-3">
+             <div className="flex gap-3">
+              <Button variant="outline" asChild>
+                <Link href="/ecommerce/prestashop/clientes-sin-compra/geografia">Ver Análisis Geográfico</Link>
+              </Button>
               <Button variant="outline">Exportar CSV</Button>
               <Button onClick={handleContactAll} className="gap-2">
                 <Mail className="h-4 w-4" />
