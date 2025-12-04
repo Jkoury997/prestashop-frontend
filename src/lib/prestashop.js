@@ -9,7 +9,7 @@ if (!PRESTASHOP_URL || !WS_KEY) {
 }
 
 // ------------------ Helpers de fecha ------------------
-export async function formatDate(date) {
+export function formatDate(date) {
   return date.toISOString().slice(0, 10); // YYYY-MM-DD
 }
 
@@ -259,6 +259,7 @@ export async function getClientesObjetivo() {
 
   const today = new Date();
 
+
   const fourMonthsAgo = new Date(today);
   fourMonthsAgo.setMonth(today.getMonth() - 4); // últimos 4 meses
 
@@ -267,6 +268,8 @@ export async function getClientesObjetivo() {
 
   const from4 = formatDate(fourMonthsAgo);
   const toToday = formatDate(today);
+
+  console.log("Desde fechas:", { from4, toToday });
 
   console.log(
     `Buscando órdenes desde ${from4} hasta ${toToday} (últimos 4 meses)...`
