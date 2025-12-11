@@ -92,7 +92,7 @@ export default function Page() {
       setIsRefreshing(true)
       setError(null)
 
-      const res = await fetch("/api/prestashop/slientes-sin-compra/refresh", {
+      const res = await fetch("/api/prestashop/clientes-sin-compra/refresh", {
         method: "GET",
       })
 
