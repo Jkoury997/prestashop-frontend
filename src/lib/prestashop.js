@@ -4,13 +4,17 @@ import axios from "axios";
 const PRESTASHOP_URL = process.env.PRESTASHOP_URL;
 const WS_KEY = process.env.PRESTASHOP_WS_KEY;
 
+if (!PRESTASHOP_URL || !WS_KEY) {
+  console.warn("⚠️ Falta PRESTA_BASE_URL o PRESTA_API_KEY en .env.local");
+}
+
 // ------------------ Helpers de fecha ------------------
-function formatDate(date) {
+export function formatDate(date) {
   return date.toISOString().slice(0, 10); // YYYY-MM-DD
 }
 
 // ------------------ Órdenes en rango ------------------
-async function getOrdersInRange(from, to, limitPerPage = 300) {
+export async function getOrdersInRange(from, to, limitPerPage = 300) {
   console.log(`Cargando órdenes desde ${from} hasta ${to}...`);
   const orders = [];
   let offset = 0;
@@ -206,6 +210,47 @@ async function getAddressesByCustomer(statesMap, limitPerPage = 300) {
   return addressesByCustomer;
 }
 
+const PAID_STATES = [2, 3, 4, 5, 11, 16, 23]; // 👈 tus estados pagados
+
+export async function getPaidOrdersInRange(from, to, limitPerPage = 300) {
+  console.log(`Cargando órdenes PAGAS desde ${from} hasta ${to}...`);
+
+  const orders = [];
+  let offset = 0;
+  let seguir = true;
+
+  // Armo filtro tipo [2|3|4|5|11|16|23]
+  const paidStatesFilter = `[${PAID_STATES.join("|")}]`;
+
+  while (seguir) {
+    const url = `${PRESTASHOP_URL}/orders`;
+
+    const { data } = await axios.get(url, {
+      params: {
+        ws_key: WS_KEY,
+        output_format: "JSON",
+        "filter[date_add]": `[${from},${to}]`,
+        "filter[current_state]": paidStatesFilter, // 👉 filtro por estados pagados
+        date: 1,
+        display: "[id,id_customer,current_state,total_paid,date_add]", 
+        limit: `${offset},${limitPerPage}`,
+      },
+    });
+
+    const batch = data.orders || [];
+
+    if (batch.length === 0) {
+      seguir = false;
+    } else {
+      orders.push(...batch);
+      offset += limitPerPage;
+      console.log(`Órdenes cargadas: ${orders.length}`);
+    }
+  }
+
+  return orders;
+}
+
 // ------------------ Core: obtener clientes objetivo ------------------
 export async function getClientesObjetivo() {
   if (!PRESTASHOP_URL || !WS_KEY) {
@@ -213,6 +258,7 @@ export async function getClientesObjetivo() {
   }
 
   const today = new Date();
+
 
   const fourMonthsAgo = new Date(today);
   fourMonthsAgo.setMonth(today.getMonth() - 4); // últimos 4 meses
@@ -223,12 +269,14 @@ export async function getClientesObjetivo() {
   const from4 = formatDate(fourMonthsAgo);
   const toToday = formatDate(today);
 
+  console.log("Desde fechas:", { from4, toToday });
+
   console.log(
     `Buscando órdenes desde ${from4} hasta ${toToday} (últimos 4 meses)...`
   );
 
   const [orders, customers, groupsMap, statesMap] = await Promise.all([
-    getOrdersInRange(from4, toToday),
+    getPaidOrdersInRange(from4, toToday),
     getAllCustomers(),
     getGroupsMap(),
     getStatesMap(),
@@ -296,3 +344,34 @@ export async function getClientesObjetivo() {
 
   return jsonData;
 }
+
+/**
+ * Llamado genérico al Webservice de PrestaShop
+ * @param {string} resource - Ej: "products", "orders", "order_details", "categories"
+ * @param {object} params - Filtros extra para la query
+ */
+export async function prestaFetch(resource, params = {}) {
+  const url = new URL(`${PRESTASHOP_URL}/${resource}`);
+
+  url.searchParams.set("output_format", "JSON");
+  url.searchParams.set("ws_key", WS_KEY);
+
+  Object.entries(params).forEach(([key, value]) => {
+    url.searchParams.set(key, value);
+  });
+
+  console.log("🔍 Presta URL:", url.toString()); // 👈 AGREGADO
+
+  const res = await fetch(url.toString(), {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Error Presta ${resource}: ${res.status} - ${text}`);
+  }
+
+  return res.json();
+}
+
