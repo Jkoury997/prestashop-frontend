@@ -23,67 +23,96 @@ export default function Page() {
   const [error, setError] = useState(null)
   const [updatedAt, setUpdatedAt] = useState(null)
   const [stale, setStale] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
-  // 👉 Cargar datos desde tu API Next
-  useEffect(() => {
-    async function loadData() {
-      try {
-        setLoading(true)
-        setError(null)
+  // 👉 Función reutilizable para cargar clientes desde la API cacheada
+  async function loadData() {
+    try {
+      setLoading(true)
+      setError(null)
 
-        const res = await fetch("/api/prestashop/clientes-sin-compra")
-        if (!res.ok) {
-          throw new Error("Error al cargar clientes inactivos")
-        }
-
-        const data = await res.json()
-        console.log("DATA RECIBIDA →", data)
-
-        const apiClientes = data.clientes || []
-
-        const mapped = apiClientes.map((c) => {
-          const lastOrderDate = c.last_order ? new Date(c.last_order) : null
-          const daysSinceLastPurchase = lastOrderDate
-            ? Math.floor(
-                (Date.now() - lastOrderDate.getTime()) /
-                  (1000 * 60 * 60 * 24),
-              )
-            : 0
-
-          const pedidos4Meses = c.orders_count_last_4_months || 0
-          const total4Meses = c.total_amount_last_4_months || 0
-          const ticketPromedio =
-            pedidos4Meses > 0 ? total4Meses / pedidos4Meses : 0
-
-          return {
-            id: c.id,
-            nombre: c.firstname,
-            apellido: c.lastname,
-            nombreCompleto: `${c.firstname} ${c.lastname}`.trim(),
-            email: c.email,
-            telefono: c.phone || "",
-            provincia: c.province || "",
-            tipoCliente: c.customer_type,
-            daysSinceLastPurchase,
-            pedidos4Meses,
-            total4Meses,
-            ticketPromedio,
-          }
-        })
-
-        setCustomers(mapped)
-        setUpdatedAt(data.updatedAt || null)
-        setStale(Boolean(data.stale))
-      } catch (err) {
-        console.error(err)
-        setError(err.message || "Error desconocido")
-      } finally {
-        setLoading(false)
+      const res = await fetch("/api/prestashop/clientes-sin-compra")
+      if (!res.ok) {
+        throw new Error("Error al cargar clientes inactivos")
       }
-    }
 
+      const data = await res.json()
+      console.log("DATA RECIBIDA →", data)
+
+      const apiClientes = data.clientes || []
+
+      const mapped = apiClientes.map((c) => {
+        const lastOrderDate = c.last_order ? new Date(c.last_order) : null
+        const daysSinceLastPurchase = lastOrderDate
+          ? Math.floor(
+              (Date.now() - lastOrderDate.getTime()) / (1000 * 60 * 60 * 24),
+            )
+          : 0
+
+        const pedidos4Meses = c.orders_count_last_4_months || 0
+        const total4Meses = c.total_amount_last_4_months || 0
+        const ticketPromedio =
+          pedidos4Meses > 0 ? total4Meses / pedidos4Meses : 0
+
+        return {
+          id: c.id,
+          nombre: c.firstname,
+          apellido: c.lastname,
+          nombreCompleto: `${c.firstname} ${c.lastname}`.trim(),
+          email: c.email,
+          telefono: c.phone || "",
+          provincia: c.province || "",
+          tipoCliente: c.customer_type,
+          daysSinceLastPurchase,
+          pedidos4Meses,
+          total4Meses,
+          ticketPromedio,
+        }
+      })
+
+      setCustomers(mapped)
+      setUpdatedAt(data.updatedAt || null)
+      setStale(Boolean(data.stale))
+    } catch (err) {
+      console.error(err)
+      setError(err.message || "Error desconocido al cargar datos")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 👉 Cargar datos al inicio
+  useEffect(() => {
     loadData()
   }, [])
+
+  // 👉 Botón "Actualizar": refresca backend y luego recarga datos
+  async function handleRefreshClick() {
+    try {
+      setIsRefreshing(true)
+      setError(null)
+
+      const res = await fetch("/api/prestashop/refresh", {
+        method: "GET",
+      })
+
+      const json = await res.json()
+
+      if (!res.ok || !json.ok) {
+        console.error("Error al refrescar:", json)
+        setError("Error al actualizar datos desde PrestaShop")
+        return
+      }
+
+      // Luego de refrescar en el backend, recargo la vista
+      await loadData()
+    } catch (err) {
+      console.error("Error en handleRefreshClick:", err)
+      setError("Error al ejecutar la actualización")
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
 
   const totalCustomers = customers.length
 
@@ -97,41 +126,36 @@ export default function Page() {
     totalCustomers > 0 ? ((inactiveCount / totalCustomers) * 100).toFixed(1) : "0"
 
   const totalLostRevenue = Math.round(
-  filteredCustomers.reduce(
-    (sum, c) => sum + (c.total4Meses || 0),
-    0
-  ) / 4
-)
+    filteredCustomers.reduce(
+      (sum, c) => sum + (c.total4Meses || 0),
+      0,
+    ) / 4,
+  )
 
   const totalPedidos4Meses = filteredCustomers.reduce(
-  (sum, c) => sum + (c.pedidos4Meses || 0),
-  0,
-)
+    (sum, c) => sum + (c.pedidos4Meses || 0),
+    0,
+  )
 
   const avgTicket =
     totalPedidos4Meses > 0 ? totalLostRevenue / totalPedidos4Meses : 0
 
-const handleContactWhatsApp = (telefono, nombre) => {
-  if (!telefono) return;
+  const handleContactWhatsApp = (telefono, nombre) => {
+    if (!telefono) return
 
-  // 1) Convertir "+" solo si está al inicio → "00"
-  let cleanPhone = telefono.replace(/^\+/, "00");
+    let cleanPhone = telefono.replace(/^\+/, "00")
+    cleanPhone = cleanPhone.replace(/\D/g, "")
 
-  // 2) Quitar todo lo que no sea número
-  cleanPhone = cleanPhone.replace(/\D/g, "");
+    if (!cleanPhone.startsWith("54") && !cleanPhone.startsWith("0054")) {
+      cleanPhone = "54" + cleanPhone
+    }
 
-  // 3) Si ya empieza con "54" o "0054", no agregar nada
-  if (!cleanPhone.startsWith("54") && !cleanPhone.startsWith("0054")) {
-    cleanPhone = "54" + cleanPhone;
+    const message = encodeURIComponent(
+      `Hola ${nombre}, notamos que no has comprado en el último mes. ¿Podemos ayudarte en algo? 😊`,
+    )
+
+    window.open(`https://wa.me/${cleanPhone}?text=${message}`, "_blank")
   }
-
-  const message = encodeURIComponent(
-    `Hola ${nombre}, notamos que no has comprado en el último mes. ¿Podemos ayudarte en algo? 😊`
-  );
-
-  window.open(`https://wa.me/${cleanPhone}?text=${message}`, "_blank");
-};
-
 
   const handleContactEmail = (email, nombre) => {
     if (!email) return
@@ -152,18 +176,31 @@ const handleContactWhatsApp = (telefono, nombre) => {
     window.location.href = `mailto:${emails}?subject=${subject}`
   }
 
-  if (loading) {
+  // ⛔ Vista de error con botón centrado para reintentar
+  if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-muted-foreground">
-        Cargando clientes inactivos...
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-center px-4">
+        <div className="text-red-500 font-medium">
+          Error al cargar clientes inactivos:
+        </div>
+        <div className="text-sm text-muted-foreground max-w-md">
+          {error}
+        </div>
+        <Button
+          onClick={handleRefreshClick}
+          disabled={isRefreshing}
+          className="mt-2"
+        >
+          {isRefreshing ? "Actualizando..." : "Reintentar actualización"}
+        </Button>
       </div>
     )
   }
 
-  if (error) {
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-red-500">
-        Error: {error}
+      <div className="min-h-screen flex items-center justify-center text-muted-foreground">
+        Cargando clientes inactivos...
       </div>
     )
   }
@@ -190,16 +227,30 @@ const handleContactWhatsApp = (telefono, nombre) => {
                     ? new Date(updatedAt).toLocaleString("es-AR")
                     : "Sin datos"}
                 </span>
+
                 {stale && (
                   <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-medium text-destructive">
-                    Datos desactualizados, volver a generar desde /api/prestashop/clientes-sin-compra/refresh
+                    Datos desactualizados, volver a generar
                   </span>
                 )}
+
+                <Button
+                  variant="outline"
+                  size="xs"
+                  className="ml-auto"
+                  onClick={handleRefreshClick}
+                  disabled={isRefreshing}
+                >
+                  {isRefreshing ? "Actualizando..." : "Actualizar"}
+                </Button>
               </div>
             </div>
-             <div className="flex gap-3">
+
+            <div className="flex gap-3">
               <Button variant="outline" asChild>
-                <Link href="/ecommerce/prestashop/clientes-sin-compra/geografia">Ver Análisis Geográfico</Link>
+                <Link href="/ecommerce/prestashop/clientes-sin-compra/geografia">
+                  Ver Análisis Geográfico
+                </Link>
               </Button>
               <Button variant="outline">Exportar CSV</Button>
               <Button onClick={handleContactAll} className="gap-2">
@@ -256,8 +307,7 @@ const handleContactWhatsApp = (telefono, nombre) => {
                   Ticket Promedio
                 </p>
                 <p className="mt-2 text-2xl font-bold text-chart-2">
-                 
-                   ${avgTicket.toLocaleString("es-AR")}
+                  ${avgTicket.toLocaleString("es-AR")}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Últimos 4 meses
@@ -276,7 +326,7 @@ const handleContactWhatsApp = (telefono, nombre) => {
                   Ingresos en Riesgo Promedio
                 </p>
                 <p className="mt-2 text-2xl font-bold text-foreground">
-                 ${totalLostRevenue.toLocaleString("es-AR")}
+                  ${totalLostRevenue.toLocaleString("es-AR")}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Basado en 4 meses
